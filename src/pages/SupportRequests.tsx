@@ -321,10 +321,11 @@ export default function SupportRequests() {
                       </>
                     )}
 
-                    {request.status === 'approved' && request.families?.husband_email && (
+                    {request.status === 'approved' && (
                       <SendEmailButton
-                        to={request.families.husband_email}
-                        familyName={`${request.families.husband_first_name} ${request.families.husband_last_name}`}
+                        to={request.families?.husband_email}
+                        familyId={request.family_id}
+                        familyName={`${request.families?.husband_first_name} ${request.families?.husband_last_name}`}
                         amount={request.approved_amount || request.requested_amount}
                         type="approval"
                         onSuccess={() => {

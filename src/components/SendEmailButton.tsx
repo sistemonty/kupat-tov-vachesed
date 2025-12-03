@@ -4,6 +4,7 @@ import EmailModal from './EmailModal'
 
 interface SendEmailButtonProps {
   to?: string | string[]
+  familyId?: string
   familyName?: string
   amount?: number
   type?: 'approval' | 'notification' | 'custom'
@@ -14,6 +15,7 @@ interface SendEmailButtonProps {
 
 export default function SendEmailButton({
   to,
+  familyId,
   familyName,
   amount,
   type = 'notification',
@@ -53,6 +55,7 @@ export default function SendEmailButton({
         defaultTo={to}
         defaultSubject={getDefaultSubject()}
         defaultMessage={getDefaultMessage()}
+        familyId={familyId}
         onSuccess={() => {
           setShowModal(false)
           onSuccess?.()
