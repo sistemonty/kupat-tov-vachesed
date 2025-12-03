@@ -8,10 +8,14 @@ import {
   Settings,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Shield,
+  Download,
+  Upload
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useIsAdmin } from '../hooks/usePermissions'
 
 const navigation = [
   { name: 'דשבורד', href: '/', icon: LayoutDashboard },
@@ -19,6 +23,8 @@ const navigation = [
   { name: 'בקשות תמיכה', href: '/requests', icon: FileText },
   { name: 'תמיכות', href: '/supports', icon: Heart },
   { name: 'פרויקטים', href: '/projects', icon: FolderKanban },
+  { name: 'ייצוא', href: '/export', icon: Download },
+  { name: 'יבוא', href: '/import', icon: Upload },
   { name: 'הגדרות', href: '/settings', icon: Settings },
 ]
 
@@ -26,6 +32,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const { user, signOut } = useAuth()
+  const isAdmin = useIsAdmin()
 
   const handleSignOut = async () => {
     if (confirm('האם להתנתק מהמערכת?')) {
@@ -75,6 +82,9 @@ export default function Layout() {
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
+              // Hide admin-only pages
+              if (item.href === '/users' && !isAdmin) return null
+              
               const isActive = location.pathname === item.href || 
                 (item.href !== '/' && location.pathname.startsWith(item.href))
               
@@ -90,6 +100,16 @@ export default function Layout() {
                 </NavLink>
               )
             })}
+            {isAdmin && (
+              <NavLink
+                to="/users"
+                className={`nav-link ${location.pathname === '/users' ? 'active' : ''}`}
+                onClick={() => setSidebarOpen(false)}
+              >
+                <Shield className="w-5 h-5" />
+                <span className="font-medium">משתמשים</span>
+              </NavLink>
+            )}
           </nav>
 
           {/* Footer with user info */}

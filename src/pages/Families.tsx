@@ -58,8 +58,8 @@ export default function Families() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-hebrew font-bold text-gray-900">משפחות</h1>
-          <p className="text-gray-500 mt-1">ניהול משפחות נתמכות</p>
+          <h1 className="text-2xl sm:text-3xl font-hebrew font-bold text-gray-900">משפחות</h1>
+          <p className="text-gray-500 mt-1 text-sm sm:text-base">ניהול משפחות נתמכות</p>
         </div>
         <Link to="/families/new" className="btn btn-primary">
           <Plus className="w-5 h-5" />
@@ -100,14 +100,14 @@ export default function Families() {
       </div>
 
       {/* Table */}
-      <div className="table-container">
+      <div className="table-container overflow-x-auto">
         {isLoading ? (
           <div className="p-8 text-center">
             <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
             <p className="text-gray-500 mt-4">טוען משפחות...</p>
           </div>
         ) : families && families.length > 0 ? (
-          <table className="table">
+          <table className="table min-w-full">
             <thead>
               <tr>
                 <th>שם המשפחה</th>

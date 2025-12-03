@@ -10,6 +10,9 @@ import SupportRequests from './pages/SupportRequests'
 import Supports from './pages/Supports'
 import Projects from './pages/Projects'
 import Settings from './pages/Settings'
+import Export from './pages/Export'
+import Import from './pages/Import'
+import Users from './pages/Users'
 
 function App() {
   return (
@@ -31,6 +34,9 @@ function App() {
         <Route path="requests" element={<SupportRequests />} />
         <Route path="supports" element={<Supports />} />
         <Route path="projects" element={<Projects />} />
+        <Route path="export" element={<Export />} />
+        <Route path="import" element={<Import />} />
+        <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
