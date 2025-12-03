@@ -11,79 +11,73 @@ import {
   MapPin,
   Users as UsersIcon,
   CheckSquare,
-  Square
+  Square,
+  ChevronDown
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import BulkActions from '../components/BulkActions'
-import AdvancedFilters, { FilterRule } from '../components/AdvancedFilters'
+
+interface ColumnFilter {
+  field: string
+  operator: string
+  value: string | number | null
+  value2?: string | number | null
+}
 
 export default function Families() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([])
+  const [columnFilters, setColumnFilters] = useState<Record<string, ColumnFilter>>({})
+  const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
-  const applyFiltersToQuery = (query: any, filters: FilterRule[]) => {
-    filters.forEach(filter => {
-      const { field, operator, value, value2 } = filter
+  const applyColumnFilter = (query: any, field: string, filter: ColumnFilter) => {
+    if (!filter || (!filter.value && !['is_empty', 'is_not_empty'].includes(filter.operator))) {
+      return query
+    }
 
-      if (!value && !['is_empty', 'is_not_empty'].includes(operator)) {
-        return // Skip empty filters
-      }
+    const { operator, value, value2 } = filter
 
-      switch (operator) {
-        case 'contains':
-          query = query.ilike(field, `%${value}%`)
-          break
-        case 'not_contains':
-          query = query.not(field, 'ilike', `%${value}%`)
-          break
-        case 'equals':
-          query = query.eq(field, value)
-          break
-        case 'starts_with':
-          query = query.ilike(field, `${value}%`)
-          break
-        case 'ends_with':
-          query = query.ilike(field, `%${value}`)
-          break
-        case 'is_empty':
-          query = query.is(field, null)
-          break
-        case 'is_not_empty':
-          query = query.not(field, 'is', null)
-          break
-        case 'greater_than':
-          query = query.gt(field, value)
-          break
-        case 'less_than':
-          query = query.lt(field, value)
-          break
-        case 'greater_equal':
-          query = query.gte(field, value)
-          break
-        case 'less_equal':
-          query = query.lte(field, value)
-          break
-        case 'between':
-          if (value !== null && value2 !== null) {
-            query = query.gte(field, value).lte(field, value2)
-          }
-          break
-        case 'after':
-          query = query.gt(field, value)
-          break
-        case 'before':
-          query = query.lt(field, value)
-          break
-      }
-    })
-    return query
+    switch (operator) {
+      case 'contains':
+        return query.ilike(field, `%${value}%`)
+      case 'not_contains':
+        return query.not(field, 'ilike', `%${value}%`)
+      case 'equals':
+        return query.eq(field, value)
+      case 'starts_with':
+        return query.ilike(field, `${value}%`)
+      case 'ends_with':
+        return query.ilike(field, `%${value}`)
+      case 'is_empty':
+        return query.is(field, null)
+      case 'is_not_empty':
+        return query.not(field, 'is', null)
+      case 'greater_than':
+        return query.gt(field, value)
+      case 'less_than':
+        return query.lt(field, value)
+      case 'greater_equal':
+        return query.gte(field, value)
+      case 'less_equal':
+        return query.lte(field, value)
+      case 'between':
+        if (value !== null && value2 !== null) {
+          return query.gte(field, value).lte(field, value2)
+        }
+        return query
+      case 'after':
+        return query.gt(field, value)
+      case 'before':
+        return query.lt(field, value)
+      default:
+        return query
+    }
   }
 
   const { data: families, isLoading } = useQuery({
-    queryKey: ['families', search, statusFilter, advancedFilters],
+    queryKey: ['families', search, statusFilter, columnFilters],
     queryFn: async () => {
       let query = supabase
         .from('families')
@@ -102,10 +96,10 @@ export default function Families() {
         query = query.or(`husband_last_name.ilike.%${search}%,husband_first_name.ilike.%${search}%,wife_first_name.ilike.%${search}%,husband_id_number.ilike.%${search}%,husband_phone.ilike.%${search}%`)
       }
 
-      // Apply advanced filters
-      if (advancedFilters.length > 0) {
-        query = applyFiltersToQuery(query, advancedFilters)
-      }
+      // Apply column filters
+      Object.entries(columnFilters).forEach(([field, filter]) => {
+        query = applyColumnFilter(query, field, filter)
+      })
 
       const { data, error } = await query
 
@@ -214,153 +208,33 @@ export default function Families() {
 
       {/* Filters */}
       <div className="card">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="חיפוש לפי שם, ת.ז., טלפון..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input pr-10"
-              />
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-gray-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="input w-auto"
-              >
-                <option value="all">כל הסטטוסים</option>
-                <option value="active">פעיל</option>
-                <option value="inactive">לא פעיל</option>
-                <option value="pending">ממתין</option>
-              </select>
-            </div>
-
-            {/* Advanced Filters */}
-            <AdvancedFilters
-              fields={[
-                { key: 'husband_last_name', label: 'שם משפחה', type: 'text' },
-                { key: 'husband_first_name', label: 'שם פרטי בעל', type: 'text' },
-                { key: 'husband_id_number', label: 'ת.ז. בעל', type: 'text' },
-                { key: 'husband_phone', label: 'טלפון בעל', type: 'text' },
-                { key: 'husband_email', label: 'אימייל בעל', type: 'text' },
-                { key: 'husband_birth_date', label: 'תאריך לידה בעל', type: 'date' },
-                { key: 'husband_marital_status', label: 'סטטוס בעל', type: 'select', options: [
-                  { value: 'married', label: 'נשוי' },
-                  { value: 'divorced', label: 'גרוש' },
-                  { value: 'widower', label: 'אלמן' },
-                  { value: 'single', label: 'רווק' },
-                ]},
-                { key: 'wife_first_name', label: 'שם פרטי אשה', type: 'text' },
-                { key: 'wife_last_name', label: 'שם משפחה אשה', type: 'text' },
-                { key: 'wife_id_number', label: 'ת.ז. אשה', type: 'text' },
-                { key: 'wife_phone', label: 'טלפון אשה', type: 'text' },
-                { key: 'wife_email', label: 'אימייל אשה', type: 'text' },
-                { key: 'wife_birth_date', label: 'תאריך לידה אשה', type: 'date' },
-                { key: 'wife_marital_status', label: 'סטטוס אשה', type: 'select', options: [
-                  { value: 'married', label: 'נשואה' },
-                  { value: 'divorced', label: 'גרושה' },
-                  { value: 'widow', label: 'אלמנה' },
-                  { value: 'single', label: 'רווקה' },
-                ]},
-                { key: 'home_phone', label: 'טלפון בית', type: 'text' },
-                { key: 'additional_phone', label: 'טלפון נוסף', type: 'text' },
-                { key: 'house_number', label: 'מספר בית', type: 'text' },
-                { key: 'entrance', label: 'כניסה', type: 'text' },
-                { key: 'floor', label: 'קומה', type: 'text' },
-                { key: 'apartment_code', label: 'קוד דירה', type: 'text' },
-                { key: 'synagogue', label: 'בית כנסת', type: 'text' },
-                { key: 'bank_account_name', label: 'שם בעל חשבון', type: 'text' },
-                { key: 'bank_number', label: 'מספר בנק', type: 'text' },
-                { key: 'bank_branch', label: 'מספר סניף', type: 'text' },
-                { key: 'bank_account', label: 'מספר חשבון', type: 'text' },
-                { key: 'status', label: 'סטטוס', type: 'select', options: [
-                  { value: 'active', label: 'פעיל' },
-                  { value: 'inactive', label: 'לא פעיל' },
-                  { value: 'pending', label: 'ממתין' },
-                ]},
-                { key: 'created_at', label: 'תאריך יצירה', type: 'date' },
-              ]}
-              filters={advancedFilters}
-              onFiltersChange={setAdvancedFilters}
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="חיפוש לפי שם, ת.ז., טלפון..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input pr-10"
             />
           </div>
 
-          {/* Active Filters Display */}
-          {advancedFilters.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-2 border-t">
-              <span className="text-sm text-gray-500">פילטרים פעילים:</span>
-              {advancedFilters.map((filter, index) => {
-                const field = [
-                  { key: 'husband_last_name', label: 'שם משפחה' },
-                  { key: 'husband_first_name', label: 'שם פרטי בעל' },
-                  { key: 'husband_id_number', label: 'ת.ז. בעל' },
-                  { key: 'husband_phone', label: 'טלפון בעל' },
-                  { key: 'husband_email', label: 'אימייל בעל' },
-                  { key: 'husband_birth_date', label: 'תאריך לידה בעל' },
-                  { key: 'husband_marital_status', label: 'סטטוס בעל' },
-                  { key: 'wife_first_name', label: 'שם פרטי אשה' },
-                  { key: 'wife_last_name', label: 'שם משפחה אשה' },
-                  { key: 'wife_id_number', label: 'ת.ז. אשה' },
-                  { key: 'wife_phone', label: 'טלפון אשה' },
-                  { key: 'wife_email', label: 'אימייל אשה' },
-                  { key: 'wife_birth_date', label: 'תאריך לידה אשה' },
-                  { key: 'wife_marital_status', label: 'סטטוס אשה' },
-                  { key: 'home_phone', label: 'טלפון בית' },
-                  { key: 'additional_phone', label: 'טלפון נוסף' },
-                  { key: 'house_number', label: 'מספר בית' },
-                  { key: 'entrance', label: 'כניסה' },
-                  { key: 'floor', label: 'קומה' },
-                  { key: 'apartment_code', label: 'קוד דירה' },
-                  { key: 'synagogue', label: 'בית כנסת' },
-                  { key: 'bank_account_name', label: 'שם בעל חשבון' },
-                  { key: 'bank_number', label: 'מספר בנק' },
-                  { key: 'bank_branch', label: 'מספר סניף' },
-                  { key: 'bank_account', label: 'מספר חשבון' },
-                  { key: 'status', label: 'סטטוס' },
-                  { key: 'created_at', label: 'תאריך יצירה' },
-                ].find(f => f.key === filter.field)
-                const operatorLabels: Record<string, string> = {
-                  contains: 'מכיל',
-                  not_contains: 'לא מכיל',
-                  equals: 'שווה',
-                  starts_with: 'מתחיל ב',
-                  ends_with: 'מסתיים ב',
-                  is_empty: 'ריק',
-                  is_not_empty: 'לא ריק',
-                  greater_than: 'גדול מ',
-                  less_than: 'קטן מ',
-                  greater_equal: 'גדול או שווה',
-                  less_equal: 'קטן או שווה',
-                  between: 'בין',
-                  after: 'אחרי',
-                  before: 'לפני',
-                }
-                return (
-                  <span key={index} className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-700 rounded text-xs">
-                    {field?.label} {operatorLabels[filter.operator]} {filter.value}
-                    {filter.operator === 'between' && filter.value2 && ` - ${filter.value2}`}
-                    <button
-                      onClick={() => {
-                        const newFilters = advancedFilters.filter((_, i) => i !== index)
-                        setAdvancedFilters(newFilters)
-                      }}
-                      className="hover:text-red-600"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                )
-              })}
-            </div>
-          )}
+          {/* Status Filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-gray-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="input w-auto"
+            >
+              <option value="all">כל הסטטוסים</option>
+              <option value="active">פעיל</option>
+              <option value="inactive">לא פעיל</option>
+              <option value="pending">ממתין</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -391,13 +265,88 @@ export default function Families() {
                       )}
                     </button>
                   </th>
-                  <th className="text-xs sm:text-sm">שם המשפחה</th>
-                  <th className="text-xs sm:text-sm">בעל</th>
-                  <th className="text-xs sm:text-sm">אשה</th>
-                  <th className="text-xs sm:text-sm">עיר</th>
-                  <th className="text-xs sm:text-sm">טלפון</th>
-                  <th className="text-xs sm:text-sm">ילדים</th>
-                  <th className="text-xs sm:text-sm">סטטוס</th>
+                  <th className="text-xs sm:text-sm">
+                    <div className="space-y-1">
+                      <div>שם המשפחה</div>
+                      <ColumnFilter
+                        field="husband_last_name"
+                        label="שם משפחה"
+                        type="text"
+                        value={columnFilters['husband_last_name'] || null}
+                        onChange={(filter) => setColumnFilters({ ...columnFilters, 'husband_last_name': filter || undefined })}
+                      />
+                    </div>
+                  </th>
+                  <th className="text-xs sm:text-sm">
+                    <div className="space-y-1">
+                      <div>בעל</div>
+                      <ColumnFilter
+                        field="husband_first_name"
+                        label="שם פרטי בעל"
+                        type="text"
+                        value={columnFilters['husband_first_name'] || null}
+                        onChange={(filter) => setColumnFilters({ ...columnFilters, 'husband_first_name': filter || undefined })}
+                      />
+                    </div>
+                  </th>
+                  <th className="text-xs sm:text-sm">
+                    <div className="space-y-1">
+                      <div>אשה</div>
+                      <ColumnFilter
+                        field="wife_first_name"
+                        label="שם פרטי אשה"
+                        type="text"
+                        value={columnFilters['wife_first_name'] || null}
+                        onChange={(filter) => setColumnFilters({ ...columnFilters, 'wife_first_name': filter || undefined })}
+                      />
+                    </div>
+                  </th>
+                  <th className="text-xs sm:text-sm">
+                    <div className="space-y-1">
+                      <div>עיר</div>
+                      <ColumnFilter
+                        field="city_id"
+                        label="עיר"
+                        type="text"
+                        value={columnFilters['city_id'] || null}
+                        onChange={(filter) => setColumnFilters({ ...columnFilters, 'city_id': filter || undefined })}
+                      />
+                    </div>
+                  </th>
+                  <th className="text-xs sm:text-sm">
+                    <div className="space-y-1">
+                      <div>טלפון</div>
+                      <ColumnFilter
+                        field="husband_phone"
+                        label="טלפון"
+                        type="text"
+                        value={columnFilters['husband_phone'] || null}
+                        onChange={(filter) => setColumnFilters({ ...columnFilters, 'husband_phone': filter || undefined })}
+                      />
+                    </div>
+                  </th>
+                  <th className="text-xs sm:text-sm">
+                    <div className="space-y-1">
+                      <div>ילדים</div>
+                    </div>
+                  </th>
+                  <th className="text-xs sm:text-sm">
+                    <div className="space-y-1">
+                      <div>סטטוס</div>
+                      <ColumnFilter
+                        field="status"
+                        label="סטטוס"
+                        type="select"
+                        options={[
+                          { value: 'active', label: 'פעיל' },
+                          { value: 'inactive', label: 'לא פעיל' },
+                          { value: 'pending', label: 'ממתין' },
+                        ]}
+                        value={columnFilters['status'] || null}
+                        onChange={(filter) => setColumnFilters({ ...columnFilters, 'status': filter || undefined })}
+                      />
+                    </div>
+                  </th>
                   <th className="text-xs sm:text-sm">פעולות</th>
                 </tr>
               </thead>
