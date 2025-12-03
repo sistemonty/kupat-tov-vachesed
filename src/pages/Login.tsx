@@ -32,10 +32,15 @@ export default function Login() {
     setGoogleLoading(true)
     setError('')
     
+    // Use the deployed URL in production, localhost in development
+    const redirectUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:5173'
+      : 'https://kupat-tov-vachesed.vercel.app'
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: redirectUrl,
       }
     })
 
