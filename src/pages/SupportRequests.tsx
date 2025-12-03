@@ -16,6 +16,7 @@ import SendEmailButton from '../components/SendEmailButton'
 export default function SupportRequests() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [showNewRequestModal, setShowNewRequestModal] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: requests, isLoading } = useQuery({
@@ -28,7 +29,8 @@ export default function SupportRequests() {
           families (
             husband_first_name,
             husband_last_name,
-            husband_phone
+            husband_phone,
+            husband_email
           )
         `)
         .order('created_at', { ascending: false })
@@ -85,7 +87,10 @@ export default function SupportRequests() {
           <h1 className="text-3xl font-hebrew font-bold text-gray-900">בקשות תמיכה</h1>
           <p className="text-gray-500 mt-1">ניהול בקשות תמיכה ממשפחות</p>
         </div>
-        <button className="btn btn-primary">
+        <button 
+          onClick={() => setShowNewRequestModal(true)}
+          className="btn btn-primary"
+        >
           <Plus className="w-5 h-5" />
           <span>בקשה חדשה</span>
         </button>
@@ -198,14 +203,6 @@ export default function SupportRequests() {
                           <Check className="w-4 h-4" />
                           אשר
                         </button>
-                        {request.families?.husband_email && (
-                          <SendEmailButton
-                            to={request.families.husband_email}
-                            familyName={`${request.families.husband_first_name} ${request.families.husband_last_name}`}
-                            amount={request.approved_amount || request.requested_amount}
-                            type="approval"
-                          />
-                        )}
                         <button
                           onClick={() => updateStatusMutation.mutate({ id: request.id, status: 'rejected' })}
                           className="btn btn-danger text-sm"
@@ -214,6 +211,18 @@ export default function SupportRequests() {
                           דחה
                         </button>
                       </>
+                    )}
+
+                    {request.status === 'approved' && request.families?.husband_email && (
+                      <SendEmailButton
+                        to={request.families.husband_email}
+                        familyName={`${request.families.husband_first_name} ${request.families.husband_last_name}`}
+                        amount={request.approved_amount || request.requested_amount}
+                        type="approval"
+                        onSuccess={() => {
+                          updateStatusMutation.mutate({ id: request.id, status: 'completed' })
+                        }}
+                      />
                     )}
 
                     <button className="p-2 hover:bg-gray-100 rounded-lg">
@@ -236,6 +245,242 @@ export default function SupportRequests() {
           </p>
         </div>
       )}
+
+      {/* New Request Modal */}
+      {showNewRequestModal && (
+        <NewRequestModal 
+          onClose={() => setShowNewRequestModal(false)}
+          onSuccess={() => {
+            setShowNewRequestModal(false)
+            queryClient.invalidateQueries({ queryKey: ['support-requests'] })
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function NewRequestModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) {
+  const [formData, setFormData] = useState({
+    family_id: '',
+    purpose: '',
+    description: '',
+    requested_amount: '',
+    needs_rights_assistance: false,
+    needs_financial_coaching: false,
+    submitted_by: '',
+    submitter_relation: '',
+    submitter_phone: '',
+    submitter_email: '',
+    is_self_request: true,
+  })
+
+  const { data: families } = useQuery({
+    queryKey: ['families-for-request'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('families')
+        .select('id, husband_first_name, husband_last_name')
+        .eq('status', 'active')
+        .order('husband_last_name')
+      return data || []
+    }
+  })
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase
+        .from('support_requests')
+        .insert({
+          family_id: data.family_id,
+          purpose: data.purpose,
+          description: data.description,
+          requested_amount: data.requested_amount ? parseFloat(data.requested_amount) : null,
+          needs_rights_assistance: data.needs_rights_assistance,
+          needs_financial_coaching: data.needs_financial_coaching,
+          submitted_by: data.submitted_by,
+          submitter_relation: data.submitter_relation,
+          submitter_phone: data.submitter_phone,
+          submitter_email: data.submitter_email,
+          is_self_request: data.is_self_request,
+          status: 'new',
+        })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      onSuccess()
+    }
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    createMutation.mutate(formData)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-elegant w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
+        <div className="p-6 border-b border-gray-100 sticky top-0 bg-white">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">בקשה חדשה</h2>
+            <button 
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="label">משפחה *</label>
+            <select
+              className="input"
+              value={formData.family_id}
+              onChange={(e) => setFormData({ ...formData, family_id: e.target.value })}
+              required
+            >
+              <option value="">בחר משפחה</option>
+              {families?.map((family: any) => (
+                <option key={family.id} value={family.id}>
+                  {family.husband_first_name} {family.husband_last_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="label">מטרת הבקשה *</label>
+            <input
+              type="text"
+              className="input"
+              value={formData.purpose}
+              onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
+              placeholder="למשל: סיוע בשכר דירה, הוצאות רפואיות..."
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">תיאור המצב</label>
+            <textarea
+              className="input min-h-[100px]"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="תאר את המצב ומטרת הבקשה..."
+            />
+          </div>
+
+          <div>
+            <label className="label">סכום מבוקש</label>
+            <input
+              type="number"
+              className="input"
+              value={formData.requested_amount}
+              onChange={(e) => setFormData({ ...formData, requested_amount: e.target.value })}
+              placeholder="₪"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.needs_rights_assistance}
+                onChange={(e) => setFormData({ ...formData, needs_rights_assistance: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <span>צורך במיצוי זכויות</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.needs_financial_coaching}
+                onChange={(e) => setFormData({ ...formData, needs_financial_coaching: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <span>צורך בליווי כלכלי</span>
+            </label>
+          </div>
+
+          <div className="border-t pt-4">
+            <label className="flex items-center gap-2 mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.is_self_request}
+                onChange={(e) => setFormData({ ...formData, is_self_request: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <span>הבקשה מוגשת עבורי</span>
+            </label>
+
+            {!formData.is_self_request && (
+              <div className="space-y-4">
+                <div>
+                  <label className="label">שם מלא</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.submitted_by}
+                    onChange={(e) => setFormData({ ...formData, submitted_by: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="label">קשר למשפחה</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={formData.submitter_relation}
+                    onChange={(e) => setFormData({ ...formData, submitter_relation: e.target.value })}
+                    placeholder="למשל: קרוב משפחה, שכן..."
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">טלפון</label>
+                    <input
+                      type="tel"
+                      className="input"
+                      value={formData.submitter_phone}
+                      onChange={(e) => setFormData({ ...formData, submitter_phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">דוא"ל</label>
+                    <input
+                      type="email"
+                      className="input"
+                      value={formData.submitter_email}
+                      onChange={(e) => setFormData({ ...formData, submitter_email: e.target.value })}
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-4 pt-4 border-t">
+            <button type="button" onClick={onClose} className="btn btn-secondary">
+              ביטול
+            </button>
+            <button 
+              type="submit" 
+              className="btn btn-primary"
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending ? 'שומר...' : 'שלח בקשה'}
+            </button>
+          </div>
+
+          {createMutation.isError && (
+            <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm">
+              שגיאה: {(createMutation.error as Error).message}
+            </div>
+          )}
+        </form>
+      </div>
     </div>
   )
 }
