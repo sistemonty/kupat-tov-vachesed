@@ -16,8 +16,9 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import BulkActions from '../components/BulkActions'
+import ColumnFilter from '../components/ColumnFilter'
 
-interface ColumnFilter {
+interface ColumnFilterRule {
   field: string
   operator: string
   value: string | number | null
@@ -28,11 +29,10 @@ export default function Families() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [columnFilters, setColumnFilters] = useState<Record<string, ColumnFilter>>({})
-  const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null)
+  const [columnFilters, setColumnFilters] = useState<Record<string, ColumnFilterRule>>({})
   const queryClient = useQueryClient()
 
-  const applyColumnFilter = (query: any, field: string, filter: ColumnFilter) => {
+  const applyColumnFilter = (query: any, field: string, filter: ColumnFilterRule) => {
     if (!filter || (!filter.value && !['is_empty', 'is_not_empty'].includes(filter.operator))) {
       return query
     }
@@ -79,33 +79,49 @@ export default function Families() {
   const { data: families, isLoading } = useQuery({
     queryKey: ['families', search, statusFilter, columnFilters],
     queryFn: async () => {
-      let query = supabase
-        .from('families')
-        .select(`
-          *,
-          cities (name),
-          children (id)
-        `)
-        .order('created_at', { ascending: false })
+      try {
+        let query = supabase
+          .from('families')
+          .select(`
+            *,
+            cities (name),
+            children (id)
+          `)
+          .order('created_at', { ascending: false })
 
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter)
+        if (statusFilter !== 'all') {
+          query = query.eq('status', statusFilter)
+        }
+
+        if (search) {
+          query = query.or(`husband_last_name.ilike.%${search}%,husband_first_name.ilike.%${search}%,wife_first_name.ilike.%${search}%,husband_id_number.ilike.%${search}%,husband_phone.ilike.%${search}%`)
+        }
+
+        // Apply column filters
+        Object.entries(columnFilters).forEach(([field, filter]) => {
+          if (filter) {
+            try {
+              query = applyColumnFilter(query, field, filter)
+            } catch (err) {
+              console.error(`Error applying filter for ${field}:`, err)
+            }
+          }
+        })
+
+        const { data, error } = await query
+
+        if (error) {
+          console.error('Supabase query error:', error)
+          throw error
+        }
+        return data || []
+      } catch (error) {
+        console.error('Error fetching families:', error)
+        throw error
       }
-
-      if (search) {
-        query = query.or(`husband_last_name.ilike.%${search}%,husband_first_name.ilike.%${search}%,wife_first_name.ilike.%${search}%,husband_id_number.ilike.%${search}%,husband_phone.ilike.%${search}%`)
-      }
-
-      // Apply column filters
-      Object.entries(columnFilters).forEach(([field, filter]) => {
-        query = applyColumnFilter(query, field, filter)
-      })
-
-      const { data, error } = await query
-
-      if (error) throw error
-      return data || []
-    }
+    },
+    retry: 1,
+    staleTime: 1000 * 60 * 5,
   })
 
   const deleteMutation = useMutation({

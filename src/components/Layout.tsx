@@ -32,7 +32,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const { user, signOut } = useAuth()
-  const isAdmin = useIsAdmin()
+  const isAdmin = useIsAdmin() || false // Default to false if hook fails
 
   const handleSignOut = async () => {
     if (confirm('האם להתנתק מהמערכת?')) {

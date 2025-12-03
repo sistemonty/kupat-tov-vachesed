@@ -14,20 +14,28 @@ export function useUserRole() {
     queryFn: async () => {
       if (!user) return null
 
-      const { data, error } = await supabase
-        .from('system_users')
-        .select('role, status')
-        .eq('auth_user_id', user.id)
-        .single()
+      try {
+        const { data, error } = await supabase
+          .from('system_users')
+          .select('role, status')
+          .eq('auth_user_id', user.id)
+          .single()
 
-      if (error || !data) {
-        // Default to user if not found
+        if (error || !data) {
+          // Default to user if not found
+          return { role: 'user' as Role, status: 'active' }
+        }
+
+        return { role: data.role as Role, status: data.status }
+      } catch (err) {
+        console.error('Error fetching user role:', err)
+        // Default to user on error
         return { role: 'user' as Role, status: 'active' }
       }
-
-      return { role: data.role as Role, status: data.status }
     },
     enabled: !!user,
+    retry: 1,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   })
 }
 
