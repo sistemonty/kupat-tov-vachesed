@@ -15,7 +15,6 @@ import {
 import { supabase } from '../lib/supabase'
 import SendEmailButton from '../components/SendEmailButton'
 import BulkActions from '../components/BulkActions'
-import { sendNotificationEmail } from '../utils/email'
 
 export default function SupportRequests() {
   const [search, setSearch] = useState('')
@@ -143,26 +142,11 @@ export default function SupportRequests() {
     }
   }
 
-  const handleBulkEmail = async () => {
+  const getSelectedEmails = () => {
     const selectedRequests = requests?.filter((r: any) => selectedIds.has(r.id)) || []
-    const emails = selectedRequests
+    return selectedRequests
       .map((r: any) => r.families?.husband_email)
       .filter(Boolean)
-    
-    if (emails.length === 0) {
-      alert('אין כתובות אימייל לבקשות הנבחרות')
-      return
-    }
-
-    try {
-      await sendNotificationEmail(
-        emails.join(','),
-        'עדכון על בקשות התמיכה - קופת טוב וחסד',
-      )
-      alert(`נשלח מייל ל-${emails.length} משפחות`)
-    } catch (error) {
-      alert('שגיאה בשליחת מייל')
-    }
   }
 
   const allSelected = requests && requests.length > 0 && selectedIds.size === requests.length
@@ -201,10 +185,10 @@ export default function SupportRequests() {
       <BulkActions
         selectedCount={selectedIds.size}
         onDelete={handleBulkDelete}
-        onEmail={handleBulkEmail}
         onApprove={handleBulkApprove}
         onReject={handleBulkReject}
         availableActions={['delete', 'email', 'approve', 'reject']}
+        selectedEmails={getSelectedEmails()}
       />
 
       {/* Filters */}

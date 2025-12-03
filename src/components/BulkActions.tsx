@@ -1,5 +1,6 @@
 import { Trash2, Mail, Edit, Check, X, MoreVertical } from 'lucide-react'
 import { useState } from 'react'
+import EmailModal from './EmailModal'
 
 interface BulkActionsProps {
   selectedCount: number
@@ -10,6 +11,7 @@ interface BulkActionsProps {
   onReject?: () => void
   onStatusChange?: (status: string) => void
   availableActions?: string[]
+  selectedEmails?: string[]
 }
 
 export default function BulkActions({
@@ -21,8 +23,10 @@ export default function BulkActions({
   onReject,
   onStatusChange,
   availableActions = ['delete', 'email', 'status'],
+  selectedEmails = [],
 }: BulkActionsProps) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
 
   if (selectedCount === 0) return null
 
@@ -36,9 +40,15 @@ export default function BulkActions({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {availableActions.includes('email') && onEmail && (
+          {availableActions.includes('email') && (
             <button
-              onClick={onEmail}
+              onClick={() => {
+                if (selectedEmails.length > 0) {
+                  setShowEmailModal(true)
+                } else if (onEmail) {
+                  onEmail()
+                }
+              }}
               className="btn btn-secondary text-sm"
             >
               <Mail className="w-4 h-4" />
@@ -111,6 +121,19 @@ export default function BulkActions({
           )}
         </div>
       </div>
+
+      {/* Email Modal */}
+      {showEmailModal && (
+        <EmailModal
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          defaultTo={selectedEmails}
+          onSuccess={() => {
+            setShowEmailModal(false)
+            if (onEmail) onEmail()
+          }}
+        />
+      )}
     </div>
   )
 }

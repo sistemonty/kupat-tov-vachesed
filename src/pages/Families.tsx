@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import BulkActions from '../components/BulkActions'
-import { sendNotificationEmail } from '../utils/email'
 
 export default function Families() {
   const [search, setSearch] = useState('')
@@ -106,26 +105,11 @@ export default function Families() {
     updateStatusMutation.mutate({ ids: Array.from(selectedIds), status })
   }
 
-  const handleBulkEmail = async () => {
+  const getSelectedEmails = () => {
     const selectedFamilies = families?.filter((f: any) => selectedIds.has(f.id)) || []
-    const emails = selectedFamilies
+    return selectedFamilies
       .map((f: any) => f.husband_email || f.wife_email)
       .filter(Boolean)
-    
-    if (emails.length === 0) {
-      alert('אין כתובות אימייל למשפחות הנבחרות')
-      return
-    }
-
-    try {
-      await sendNotificationEmail(
-        emails.join(','),
-        'עדכון מהמערכת - קופת טוב וחסד',
-      )
-      alert(`נשלח מייל ל-${emails.length} משפחות`)
-    } catch (error) {
-      alert('שגיאה בשליחת מייל')
-    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -158,9 +142,9 @@ export default function Families() {
       <BulkActions
         selectedCount={selectedIds.size}
         onDelete={handleBulkDelete}
-        onEmail={handleBulkEmail}
         onStatusChange={handleBulkStatusChange}
         availableActions={['delete', 'email', 'status']}
+        selectedEmails={getSelectedEmails()}
       />
 
       {/* Filters */}

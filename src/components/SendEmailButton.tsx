@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Mail, Loader2, CheckCircle } from 'lucide-react'
-import { sendEmail, sendApprovalEmail, sendNotificationEmail } from '../utils/email'
+import { Mail } from 'lucide-react'
+import EmailModal from './EmailModal'
 
 interface SendEmailButtonProps {
-  to: string
+  to?: string | string[]
   familyName?: string
   amount?: number
   type?: 'approval' | 'notification' | 'custom'
@@ -21,59 +21,44 @@ export default function SendEmailButton({
   customMessage,
   onSuccess,
 }: SendEmailButtonProps) {
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [showModal, setShowModal] = useState(false)
 
-  const handleSend = async () => {
-    if (!to) {
-      alert('אין כתובת אימייל')
-      return
+  const getDefaultSubject = () => {
+    if (customSubject) return customSubject
+    if (type === 'approval') return 'בקשת התמיכה שלך אושרה - קופת טוב וחסד'
+    return 'עדכון מהמערכת - קופת טוב וחסד'
+  }
+
+  const getDefaultMessage = () => {
+    if (customMessage) return customMessage
+    if (type === 'approval' && familyName && amount) {
+      return `שלום ${familyName},\n\nבקשת התמיכה שלך אושרה!\n\nסכום מאושר: ₪${amount.toLocaleString()}\nתאריך: ${new Date().toLocaleDateString('he-IL')}\n\nבברכה,\nקופת טוב וחסד`
     }
-
-    setLoading(true)
-    setSuccess(false)
-
-    try {
-      if (type === 'approval' && familyName && amount) {
-        await sendApprovalEmail(to, familyName, amount, new Date().toLocaleDateString('he-IL'))
-      } else if (type === 'notification') {
-        await sendNotificationEmail(to, customMessage || 'עדכון מהמערכת')
-      } else {
-        await sendEmail({
-          to,
-          subject: customSubject || 'עדכון מהמערכת',
-          html: customMessage || '<p>עדכון מהמערכת</p>',
-        })
-      }
-
-      setSuccess(true)
-      onSuccess?.()
-      
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (error: any) {
-      alert(`שגיאה בשליחת מייל: ${error.message}`)
-    } finally {
-      setLoading(false)
-    }
+    return 'עדכון מהמערכת'
   }
 
   return (
-    <button
-      onClick={handleSend}
-      disabled={loading || success}
-      className={`btn ${
-        success ? 'btn-success' : 'btn-secondary'
-      } text-sm`}
-    >
-      {loading ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
-      ) : success ? (
-        <CheckCircle className="w-4 h-4" />
-      ) : (
+    <>
+      <button
+        onClick={() => setShowModal(true)}
+        className="btn btn-secondary text-sm"
+      >
         <Mail className="w-4 h-4" />
-      )}
-      <span>{success ? 'נשלח!' : 'שלח מייל'}</span>
-    </button>
+        <span>שלח מייל</span>
+      </button>
+
+      <EmailModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        defaultTo={to}
+        defaultSubject={getDefaultSubject()}
+        defaultMessage={getDefaultMessage()}
+        onSuccess={() => {
+          setShowModal(false)
+          onSuccess?.()
+        }}
+      />
+    </>
   )
 }
 
