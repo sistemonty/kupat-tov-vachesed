@@ -11,6 +11,7 @@ import {
   LogOut
 } from 'lucide-react'
 import { useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 
 const navigation = [
   { name: 'דשבורד', href: '/', icon: LayoutDashboard },
@@ -24,6 +25,13 @@ const navigation = [
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
+  const { user, signOut } = useAuth()
+
+  const handleSignOut = async () => {
+    if (confirm('האם להתנתק מהמערכת?')) {
+      await signOut()
+    }
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -84,11 +92,20 @@ export default function Layout() {
             })}
           </nav>
 
-          {/* Footer */}
+          {/* Footer with user info */}
           <div className="p-4 border-t border-gray-100">
-            <button className="nav-link w-full text-gray-500 hover:text-red-600 hover:bg-red-50">
+            {user && (
+              <div className="mb-3 px-4 py-2 bg-gray-50 rounded-xl">
+                <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
+                <p className="text-xs text-gray-500">מחובר</p>
+              </div>
+            )}
+            <button 
+              onClick={handleSignOut}
+              className="nav-link w-full text-gray-500 hover:text-red-600 hover:bg-red-50"
+            >
               <LogOut className="w-5 h-5" />
-              <span>יציאה</span>
+              <span>התנתק</span>
             </button>
           </div>
         </div>
@@ -108,11 +125,11 @@ export default function Layout() {
             
             <div className="flex items-center gap-4">
               <div className="text-left">
-                <p className="text-sm font-medium text-gray-900">שלום, מנהל</p>
-                <p className="text-xs text-gray-500">קופת טוב וחסד</p>
+                <p className="text-sm font-medium text-gray-900">שלום!</p>
+                <p className="text-xs text-gray-500 truncate max-w-[150px]">{user?.email}</p>
               </div>
               <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center text-white font-bold">
-                מ
+                {user?.email?.charAt(0).toUpperCase() || 'מ'}
               </div>
             </div>
           </div>
@@ -126,4 +143,3 @@ export default function Layout() {
     </div>
   )
 }
-
