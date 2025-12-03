@@ -11,6 +11,7 @@ import {
   FileText
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import SendEmailButton from '../components/SendEmailButton'
 
 export default function SupportRequests() {
   const [search, setSearch] = useState('')
@@ -197,6 +198,14 @@ export default function SupportRequests() {
                           <Check className="w-4 h-4" />
                           אשר
                         </button>
+                        {request.families?.husband_email && (
+                          <SendEmailButton
+                            to={request.families.husband_email}
+                            familyName={`${request.families.husband_first_name} ${request.families.husband_last_name}`}
+                            amount={request.approved_amount || request.requested_amount}
+                            type="approval"
+                          />
+                        )}
                         <button
                           onClick={() => updateStatusMutation.mutate({ id: request.id, status: 'rejected' })}
                           className="btn btn-danger text-sm"
