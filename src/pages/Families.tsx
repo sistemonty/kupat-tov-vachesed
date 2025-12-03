@@ -28,6 +28,10 @@ export default function Families() {
     filters.forEach(filter => {
       const { field, operator, value, value2 } = filter
 
+      if (!value && !['is_empty', 'is_not_empty'].includes(operator)) {
+        return // Skip empty filters
+      }
+
       switch (operator) {
         case 'contains':
           query = query.ilike(field, `%${value}%`)
@@ -63,7 +67,7 @@ export default function Families() {
           query = query.lte(field, value)
           break
         case 'between':
-          if (value && value2) {
+          if (value !== null && value2 !== null) {
             query = query.gte(field, value).lte(field, value2)
           }
           break
