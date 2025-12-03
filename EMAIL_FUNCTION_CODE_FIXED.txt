@@ -1,8 +1,10 @@
+// העתק את כל הקוד הזה והדבק ב-Editor של Supabase
+// תיקון: html הוא אופציונלי אם יש template
+
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@kupat-tov-vachesed.co.il'
+const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@onboarding.resend.dev'
 
 interface EmailRequest {
   to: string | string[]
@@ -219,7 +221,10 @@ function generateTemplate(template: string, data: Record<string, any>): string {
   
   // Replace placeholders
   Object.keys(data).forEach(key => {
-    html = html.replace(new RegExp(`\\$\\{${key}\\}`, 'g'), data[key])
+    const value = data[key]
+    if (value !== null && value !== undefined) {
+      html = html.replace(new RegExp(`\\$\\{${key}\\}`, 'g'), String(value))
+    }
   })
 
   return html

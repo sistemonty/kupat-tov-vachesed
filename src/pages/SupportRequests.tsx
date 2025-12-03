@@ -8,15 +8,20 @@ import {
   Check,
   X,
   Clock,
-  FileText
+  FileText,
+  CheckSquare,
+  Square
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import SendEmailButton from '../components/SendEmailButton'
+import BulkActions from '../components/BulkActions'
+import { sendNotificationEmail } from '../utils/email'
 
 export default function SupportRequests() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showNewRequestModal, setShowNewRequestModal] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const queryClient = useQueryClient()
 
   const { data: requests, isLoading } = useQuery({
