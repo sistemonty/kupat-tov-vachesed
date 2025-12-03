@@ -130,31 +130,31 @@ export default function FamilyDetail() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link to="/families" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-hebrew font-bold text-gray-900">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-hebrew font-bold text-gray-900">
                 משפחת {family.husband_last_name}
               </h1>
-              <span className={`badge ${badge.class}`}>{badge.text}</span>
+              <span className={`badge ${badge.class} text-xs sm:text-sm`}>{badge.text}</span>
             </div>
-            <p className="text-gray-500 mt-1">
+            <p className="text-gray-500 mt-1 text-sm sm:text-base">
               {family.husband_first_name} {family.wife_first_name && `ו${family.wife_first_name}`}
             </p>
           </div>
         </div>
-        <Link to={`/families/${id}/edit`} className="btn btn-primary">
-          <Edit className="w-5 h-5" />
+        <Link to={`/families/${id}/edit`} className="btn btn-primary text-sm sm:text-base">
+          <Edit className="w-4 h-4 sm:w-5 sm:h-5" />
           <span>עריכה</span>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Main Info */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="xl:col-span-2 space-y-6">
           {/* Contact Info */}
           <div className="card">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">

@@ -99,88 +99,164 @@ export default function Families() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="table-container overflow-x-auto">
-        {isLoading ? (
-          <div className="p-8 text-center">
-            <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-gray-500 mt-4">טוען משפחות...</p>
+      {/* Table - Desktop / Cards - Mobile */}
+      {isLoading ? (
+        <div className="card p-8 text-center">
+          <div className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-gray-500 mt-4">טוען משפחות...</p>
+        </div>
+      ) : families && families.length > 0 ? (
+        <>
+          {/* Desktop Table */}
+          <div className="hidden lg:block table-container overflow-x-auto">
+            <table className="table min-w-full">
+              <thead>
+                <tr>
+                  <th className="text-xs sm:text-sm">שם המשפחה</th>
+                  <th className="text-xs sm:text-sm">בעל</th>
+                  <th className="text-xs sm:text-sm">אשה</th>
+                  <th className="text-xs sm:text-sm">עיר</th>
+                  <th className="text-xs sm:text-sm">טלפון</th>
+                  <th className="text-xs sm:text-sm">ילדים</th>
+                  <th className="text-xs sm:text-sm">סטטוס</th>
+                  <th className="text-xs sm:text-sm">פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {families.map((family: any) => {
+                  const badge = getStatusBadge(family.status)
+                  return (
+                    <tr key={family.id}>
+                      <td>
+                        <span className="font-semibold text-gray-900 text-sm">
+                          {family.husband_last_name}
+                        </span>
+                      </td>
+                      <td className="text-sm">
+                        {family.husband_first_name} {family.husband_last_name}
+                      </td>
+                      <td className="text-sm">
+                        {family.wife_first_name} {family.wife_last_name || family.husband_last_name}
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-1 text-gray-500 text-sm">
+                          <MapPin className="w-4 h-4" />
+                          {family.cities?.name || '-'}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Phone className="w-4 h-4 text-gray-400" />
+                          {family.husband_phone || family.wife_phone || '-'}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-1 text-sm">
+                          <UsersIcon className="w-4 h-4 text-gray-400" />
+                          {family.children?.length || 0}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${badge.class} text-xs`}>{badge.text}</span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <Link 
+                            to={`/families/${family.id}`}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="צפייה"
+                          >
+                            <Eye className="w-4 h-4 text-gray-500" />
+                          </Link>
+                          <Link 
+                            to={`/families/${family.id}/edit`}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="עריכה"
+                          >
+                            <Edit className="w-4 h-4 text-gray-500" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-        ) : families && families.length > 0 ? (
-          <table className="table min-w-full">
-            <thead>
-              <tr>
-                <th>שם המשפחה</th>
-                <th>בעל</th>
-                <th>אשה</th>
-                <th>עיר</th>
-                <th>טלפון</th>
-                <th>ילדים</th>
-                <th>סטטוס</th>
-                <th>פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {families.map((family: any) => {
-                const badge = getStatusBadge(family.status)
-                return (
-                  <tr key={family.id}>
-                    <td>
-                      <span className="font-semibold text-gray-900">
-                        {family.husband_last_name}
-                      </span>
-                    </td>
-                    <td>
-                      {family.husband_first_name} {family.husband_last_name}
-                    </td>
-                    <td>
-                      {family.wife_first_name} {family.wife_last_name || family.husband_last_name}
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-1 text-gray-500">
-                        <MapPin className="w-4 h-4" />
-                        {family.cities?.name || '-'}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-1">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        {family.husband_phone || family.wife_phone || '-'}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-1">
-                        <UsersIcon className="w-4 h-4 text-gray-400" />
-                        {family.children?.length || 0}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${badge.class}`}>{badge.text}</span>
-                    </td>
-                    <td>
+
+          {/* Mobile Cards */}
+          <div className="lg:hidden space-y-4">
+            {families.map((family: any) => {
+              const badge = getStatusBadge(family.status)
+              return (
+                <div key={family.id} className="card">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 text-lg">
+                        משפחת {family.husband_last_name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {family.husband_first_name} {family.husband_last_name}
+                      </p>
+                    </div>
+                    <span className={`badge ${badge.class} text-xs`}>{badge.text}</span>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    {family.wife_first_name && (
                       <div className="flex items-center gap-2">
-                        <Link 
-                          to={`/families/${family.id}`}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="צפייה"
-                        >
-                          <Eye className="w-4 h-4 text-gray-500" />
-                        </Link>
-                        <Link 
-                          to={`/families/${family.id}/edit`}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="עריכה"
-                        >
-                          <Edit className="w-4 h-4 text-gray-500" />
-                        </Link>
+                        <span className="text-gray-500 w-16">אשה:</span>
+                        <span>{family.wife_first_name} {family.wife_last_name || family.husband_last_name}</span>
                       </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        ) : (
+                    )}
+                    
+                    {family.cities?.name && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-500 w-16">עיר:</span>
+                        <span>{family.cities.name}</span>
+                      </div>
+                    )}
+
+                    {(family.husband_phone || family.wife_phone) && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-500 w-16">טלפון:</span>
+                        <a href={`tel:${family.husband_phone || family.wife_phone}`} className="text-primary-600 hover:underline">
+                          {family.husband_phone || family.wife_phone}
+                        </a>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <UsersIcon className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-500 w-16">ילדים:</span>
+                      <span>{family.children?.length || 0}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+                    <Link 
+                      to={`/families/${family.id}`}
+                      className="btn btn-secondary flex-1 text-sm"
+                    >
+                      <Eye className="w-4 h-4" />
+                      צפייה
+                    </Link>
+                    <Link 
+                      to={`/families/${family.id}/edit`}
+                      className="btn btn-secondary flex-1 text-sm"
+                    >
+                      <Edit className="w-4 h-4" />
+                      עריכה
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      ) : (
           <div className="p-12 text-center">
             <UsersIcon className="w-16 h-16 text-gray-200 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">אין משפחות</h3>
@@ -195,7 +271,6 @@ export default function Families() {
             )}
           </div>
         )}
-      </div>
 
       {/* Summary */}
       {families && families.length > 0 && (

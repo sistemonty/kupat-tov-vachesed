@@ -96,15 +96,15 @@ export default function FamilyForm() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link to="/families" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-          <ArrowRight className="w-5 h-5" />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <Link to="/families" className="p-2 hover:bg-gray-100 rounded-lg transition-colors self-start">
+          <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
         </Link>
         <div>
-          <h1 className="text-3xl font-hebrew font-bold text-gray-900">
+          <h1 className="text-2xl sm:text-3xl font-hebrew font-bold text-gray-900">
             {isEdit ? 'עריכת משפחה' : 'משפחה חדשה'}
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-gray-500 mt-1 text-sm sm:text-base">
             {isEdit ? 'עדכן את פרטי המשפחה' : 'הוסף משפחה חדשה למערכת'}
           </p>
         </div>
