@@ -1,18 +1,23 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, 
   Search, 
   Filter,
   Heart,
   Calendar,
-  Download
+  Download,
+  CheckSquare,
+  Square
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import BulkActions from '../components/BulkActions'
 
 export default function Supports() {
   const [search, setSearch] = useState('')
   const [projectFilter, setProjectFilter] = useState<string>('all')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const queryClient = useQueryClient()
 
   const { data: supports, isLoading } = useQuery({
     queryKey: ['supports', search, projectFilter],
@@ -75,6 +80,44 @@ export default function Supports() {
     return badges[status] || { class: 'badge-gray', text: status }
   }
 
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('supports')
+        .delete()
+        .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['supports'] })
+      setSelectedIds(new Set())
+    }
+  })
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(supports?.map((s: any) => s.id) || []))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelect = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const handleBulkDelete = () => {
+    if (confirm(`האם למחוק ${selectedIds.size} תמיכות?`)) {
+      deleteMutation.mutate(Array.from(selectedIds))
+    }
+  }
+
   const getMethodText = (method: string) => {
     const methods: Record<string, string> = {
       transfer: 'העברה בנקאית',
@@ -85,6 +128,9 @@ export default function Supports() {
     }
     return methods[method] || method
   }
+
+  const allSelected = supports && supports.length > 0 && selectedIds.size === supports.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < (supports?.length || 0)
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -125,6 +171,13 @@ export default function Supports() {
           <p className="text-2xl font-bold text-purple-700">{stats?.count || 0}</p>
         </div>
       </div>
+
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedCount={selectedIds.size}
+        onDelete={handleBulkDelete}
+        availableActions={['delete']}
+      />
 
       {/* Filters */}
       <div className="card">
@@ -167,6 +220,20 @@ export default function Supports() {
           <table className="table">
             <thead>
               <tr>
+                <th className="w-12">
+                  <button
+                    onClick={() => handleSelectAll(!allSelected)}
+                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  >
+                    {allSelected ? (
+                      <CheckSquare className="w-5 h-5 text-primary-600" />
+                    ) : someSelected ? (
+                      <div className="w-5 h-5 border-2 border-primary-600 rounded bg-primary-100" />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-400" />
+                    )}
+                  </button>
+                </th>
                 <th>משפחה</th>
                 <th>סוג תמיכה</th>
                 <th>פרויקט</th>
@@ -179,8 +246,21 @@ export default function Supports() {
             <tbody>
               {supports.map((support: any) => {
                 const badge = getStatusBadge(support.status)
+                const isSelected = selectedIds.has(support.id)
                 return (
-                  <tr key={support.id}>
+                  <tr key={support.id} className={isSelected ? 'bg-primary-50' : ''}>
+                    <td>
+                      <button
+                        onClick={() => handleSelect(support.id, !isSelected)}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-5 h-5 text-primary-600" />
+                        ) : (
+                          <Square className="w-5 h-5 text-gray-400" />
+                        )}
+                      </button>
+                    </td>
                     <td className="font-medium">
                       {support.families?.husband_first_name} {support.families?.husband_last_name}
                     </td>

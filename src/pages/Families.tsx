@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { 
   Plus, 
@@ -9,13 +9,19 @@ import {
   Edit,
   Phone,
   MapPin,
-  Users as UsersIcon
+  Users as UsersIcon,
+  CheckSquare,
+  Square
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import BulkActions from '../components/BulkActions'
+import { sendNotificationEmail } from '../utils/email'
 
 export default function Families() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const queryClient = useQueryClient()
 
   const { data: families, isLoading } = useQuery({
     queryKey: ['families', search, statusFilter],
@@ -44,6 +50,84 @@ export default function Families() {
     }
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('families')
+        .delete()
+        .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['families'] })
+      setSelectedIds(new Set())
+    }
+  })
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[], status: string }) => {
+      const { error } = await supabase
+        .from('families')
+        .update({ status })
+        .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['families'] })
+      setSelectedIds(new Set())
+    }
+  })
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(families?.map((f: any) => f.id) || []))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelect = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const handleBulkDelete = () => {
+    if (confirm(`האם למחוק ${selectedIds.size} משפחות?`)) {
+      deleteMutation.mutate(Array.from(selectedIds))
+    }
+  }
+
+  const handleBulkStatusChange = (status: string) => {
+    updateStatusMutation.mutate({ ids: Array.from(selectedIds), status })
+  }
+
+  const handleBulkEmail = async () => {
+    const selectedFamilies = families?.filter((f: any) => selectedIds.has(f.id)) || []
+    const emails = selectedFamilies
+      .map((f: any) => f.husband_email || f.wife_email)
+      .filter(Boolean)
+    
+    if (emails.length === 0) {
+      alert('אין כתובות אימייל למשפחות הנבחרות')
+      return
+    }
+
+    try {
+      await sendNotificationEmail(
+        emails.join(','),
+        'עדכון מהמערכת - קופת טוב וחסד',
+      )
+      alert(`נשלח מייל ל-${emails.length} משפחות`)
+    } catch (error) {
+      alert('שגיאה בשליחת מייל')
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { class: string, text: string }> = {
       active: { class: 'badge-success', text: 'פעיל' },
@@ -52,6 +136,9 @@ export default function Families() {
     }
     return badges[status] || { class: 'badge-gray', text: status }
   }
+
+  const allSelected = families && families.length > 0 && selectedIds.size === families.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < (families?.length || 0)
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -66,6 +153,15 @@ export default function Families() {
           <span>משפחה חדשה</span>
         </Link>
       </div>
+
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedCount={selectedIds.size}
+        onDelete={handleBulkDelete}
+        onEmail={handleBulkEmail}
+        onStatusChange={handleBulkStatusChange}
+        availableActions={['delete', 'email', 'status']}
+      />
 
       {/* Filters */}
       <div className="card">
@@ -112,6 +208,20 @@ export default function Families() {
             <table className="table min-w-full">
               <thead>
                 <tr>
+                  <th className="text-xs sm:text-sm w-12">
+                    <button
+                      onClick={() => handleSelectAll(!allSelected)}
+                      className="p-1 hover:bg-gray-100 rounded transition-colors"
+                    >
+                      {allSelected ? (
+                        <CheckSquare className="w-5 h-5 text-primary-600" />
+                      ) : someSelected ? (
+                        <div className="w-5 h-5 border-2 border-primary-600 rounded bg-primary-100" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+                  </th>
                   <th className="text-xs sm:text-sm">שם המשפחה</th>
                   <th className="text-xs sm:text-sm">בעל</th>
                   <th className="text-xs sm:text-sm">אשה</th>
@@ -125,8 +235,21 @@ export default function Families() {
               <tbody>
                 {families.map((family: any) => {
                   const badge = getStatusBadge(family.status)
+                  const isSelected = selectedIds.has(family.id)
                   return (
-                    <tr key={family.id}>
+                    <tr key={family.id} className={isSelected ? 'bg-primary-50' : ''}>
+                      <td>
+                        <button
+                          onClick={() => handleSelect(family.id, !isSelected)}
+                          className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-5 h-5 text-primary-600" />
+                          ) : (
+                            <Square className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
+                      </td>
                       <td>
                         <span className="font-semibold text-gray-900 text-sm">
                           {family.husband_last_name}
@@ -188,10 +311,21 @@ export default function Families() {
           <div className="lg:hidden space-y-4">
             {families.map((family: any) => {
               const badge = getStatusBadge(family.status)
+              const isSelected = selectedIds.has(family.id)
               return (
-                <div key={family.id} className="card">
+                <div key={family.id} className={`card ${isSelected ? 'ring-2 ring-primary-500' : ''}`}>
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
+                    <button
+                      onClick={() => handleSelect(family.id, !isSelected)}
+                      className="p-1 hover:bg-gray-100 rounded transition-colors mt-1"
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-5 h-5 text-primary-600" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+                    <div className="flex-1 mr-2">
                       <h3 className="font-semibold text-gray-900 text-lg">
                         משפחת {family.husband_last_name}
                       </h3>

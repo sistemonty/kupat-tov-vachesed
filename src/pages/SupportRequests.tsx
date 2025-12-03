@@ -64,8 +64,104 @@ export default function SupportRequests() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['support-requests'] })
+      setSelectedIds(new Set())
     }
   })
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[], status: string }) => {
+      const updateData: any = { status }
+      if (status === 'approved') {
+        updateData.approval_date = new Date().toISOString().split('T')[0]
+      }
+      
+      const { error } = await supabase
+        .from('support_requests')
+        .update(updateData)
+        .in('id', ids)
+      
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-requests'] })
+      setSelectedIds(new Set())
+    }
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('support_requests')
+        .delete()
+        .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-requests'] })
+      setSelectedIds(new Set())
+    }
+  })
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(requests?.map((r: any) => r.id) || []))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelect = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const handleBulkApprove = () => {
+    if (confirm(`האם לאשר ${selectedIds.size} בקשות?`)) {
+      bulkUpdateMutation.mutate({ ids: Array.from(selectedIds), status: 'approved' })
+    }
+  }
+
+  const handleBulkReject = () => {
+    if (confirm(`האם לדחות ${selectedIds.size} בקשות?`)) {
+      bulkUpdateMutation.mutate({ ids: Array.from(selectedIds), status: 'rejected' })
+    }
+  }
+
+  const handleBulkDelete = () => {
+    if (confirm(`האם למחוק ${selectedIds.size} בקשות?`)) {
+      bulkDeleteMutation.mutate(Array.from(selectedIds))
+    }
+  }
+
+  const handleBulkEmail = async () => {
+    const selectedRequests = requests?.filter((r: any) => selectedIds.has(r.id)) || []
+    const emails = selectedRequests
+      .map((r: any) => r.families?.husband_email)
+      .filter(Boolean)
+    
+    if (emails.length === 0) {
+      alert('אין כתובות אימייל לבקשות הנבחרות')
+      return
+    }
+
+    try {
+      await sendNotificationEmail(
+        emails.join(','),
+        'עדכון על בקשות התמיכה - קופת טוב וחסד',
+      )
+      alert(`נשלח מייל ל-${emails.length} משפחות`)
+    } catch (error) {
+      alert('שגיאה בשליחת מייל')
+    }
+  }
+
+  const allSelected = requests && requests.length > 0 && selectedIds.size === requests.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < (requests?.length || 0)
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { class: string, text: string, icon: any }> = {
@@ -95,6 +191,16 @@ export default function SupportRequests() {
           <span>בקשה חדשה</span>
         </button>
       </div>
+
+      {/* Bulk Actions */}
+      <BulkActions
+        selectedCount={selectedIds.size}
+        onDelete={handleBulkDelete}
+        onEmail={handleBulkEmail}
+        onApprove={handleBulkApprove}
+        onReject={handleBulkReject}
+        availableActions={['delete', 'email', 'approve', 'reject']}
+      />
 
       {/* Filters */}
       <div className="card">
@@ -139,11 +245,23 @@ export default function SupportRequests() {
           {requests.map((request: any) => {
             const badge = getStatusBadge(request.status)
             const BadgeIcon = badge.icon
+            const isSelected = selectedIds.has(request.id)
 
             return (
-              <div key={request.id} className="card hover:shadow-elegant transition-shadow">
+              <div key={request.id} className={`card hover:shadow-elegant transition-shadow ${isSelected ? 'ring-2 ring-primary-500' : ''}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex-1">
+                  <div className="flex items-start gap-3 flex-1">
+                    <button
+                      onClick={() => handleSelect(request.id, !isSelected)}
+                      className="p-1 hover:bg-gray-100 rounded transition-colors mt-1 flex-shrink-0"
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-5 h-5 text-primary-600" />
+                      ) : (
+                        <Square className="w-5 h-5 text-gray-400" />
+                      )}
+                    </button>
+                    <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-semibold text-gray-900">
                         {request.families?.husband_first_name} {request.families?.husband_last_name}
@@ -169,10 +287,11 @@ export default function SupportRequests() {
                         </span>
                       )}
                     </div>
+                    </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {request.status === 'new' && (
                       <>
                         <button
