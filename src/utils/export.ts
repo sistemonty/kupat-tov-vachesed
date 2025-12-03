@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import Papa from 'papaparse'
 import type { Family, Support, SupportRequest, Child } from '../lib/database.types'
 
 // Export families to Excel
