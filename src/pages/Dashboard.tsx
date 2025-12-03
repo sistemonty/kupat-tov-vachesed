@@ -110,8 +110,8 @@ export default function Dashboard() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-hebrew font-bold text-gray-900">דשבורד</h1>
-        <p className="text-gray-500 mt-1">ברוכים הבאים למערכת ניהול הנתמכים</p>
+        <h1 className="text-2xl sm:text-3xl font-hebrew font-bold text-gray-900">דשבורד</h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">ברוכים הבאים למערכת ניהול הנתמכים</p>
       </div>
 
       {/* Stats Grid */}

@@ -167,8 +167,8 @@ export default function Import() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-hebrew font-bold text-gray-900">יבוא נתונים</h1>
-        <p className="text-gray-500 mt-1">העלה קבצי Excel או CSV להכנסה למערכת</p>
+        <h1 className="text-2xl sm:text-3xl font-hebrew font-bold text-gray-900">יבוא נתונים</h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">העלה קבצי Excel או CSV להכנסה למערכת</p>
       </div>
 
       {/* Import Type Selection */}

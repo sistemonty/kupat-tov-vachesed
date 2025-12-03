@@ -145,8 +145,8 @@ export default function Export() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-hebrew font-bold text-gray-900">ייצוא נתונים</h1>
-        <p className="text-gray-500 mt-1">ייצא נתונים מהמערכת בפורמטים שונים</p>
+        <h1 className="text-2xl sm:text-3xl font-hebrew font-bold text-gray-900">ייצוא נתונים</h1>
+        <p className="text-gray-500 mt-1 text-sm sm:text-base">ייצא נתונים מהמערכת בפורמטים שונים</p>
       </div>
 
       {/* Export Options */}
