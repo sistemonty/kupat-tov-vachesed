@@ -183,7 +183,19 @@ export default function EmailModal({
       onSuccess?.()
       onClose()
     } catch (err: any) {
-      setError(err.message || 'שגיאה בשליחת מייל')
+      console.error('Email send error:', err)
+      // Extract error message
+      let errorMessage = 'שגיאה בשליחת מייל'
+      if (err.message) {
+        errorMessage = err.message
+        // If it's a domain error, show helpful message
+        if (err.message.includes('domain is not verified')) {
+          errorMessage = 'ה-domain לא מאומת ב-Resend. אנא הוסף domain ב-Resend Dashboard.'
+        } else if (err.message.includes('RESEND_API_KEY')) {
+          errorMessage = 'API Key לא מוגדר. אנא הגדר RESEND_API_KEY ב-Supabase Secrets.'
+        }
+      }
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

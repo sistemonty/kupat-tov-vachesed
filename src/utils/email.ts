@@ -24,13 +24,25 @@ export async function sendEmail(options: EmailOptions) {
 
     if (error) {
       console.error('Email error:', error)
-      throw error
+      // Extract error message from Supabase error
+      const errorMessage = error.message || error.error?.message || 'Failed to send email'
+      const errorDetails = error.error?.details || error.error
+      throw new Error(errorDetails ? `${errorMessage}: ${JSON.stringify(errorDetails)}` : errorMessage)
+    }
+
+    // Check if response has error
+    if (data && data.error) {
+      throw new Error(data.error + (data.details ? `: ${JSON.stringify(data.details)}` : ''))
     }
 
     return data
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to send email:', error)
-    throw error
+    // Re-throw with better error message
+    if (error.message) {
+      throw error
+    }
+    throw new Error(error.toString() || 'Failed to send email')
   }
 }
 

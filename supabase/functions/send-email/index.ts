@@ -28,13 +28,33 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Check API key
+    if (!RESEND_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: 'RESEND_API_KEY is not configured. Please set it in Supabase Edge Functions secrets.' }),
+        { 
+          status: 500, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          } 
+        }
+      )
+    }
+
     const { to, subject, html, text, template, data } = await req.json() as EmailRequest
 
     // Validate required fields
     if (!to || !subject) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: to, subject' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          } 
+        }
       )
     }
 
@@ -42,7 +62,13 @@ Deno.serve(async (req: Request) => {
     if (!html && !template) {
       return new Response(
         JSON.stringify({ error: 'Missing required field: html or template' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { 
+          status: 400, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          } 
+        }
       )
     }
 
@@ -59,25 +85,44 @@ Deno.serve(async (req: Request) => {
     }
 
     // Send email via Resend
+    const emailPayload = {
+      from: FROM_EMAIL,
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      html: finalHtml,
+      text: text || stripHtml(finalHtml),
+    }
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: Array.isArray(to) ? to : [to],
-        subject,
-        html: finalHtml,
-        text: text || stripHtml(finalHtml),
-      }),
+      body: JSON.stringify(emailPayload),
     })
 
     const result = await response.json()
 
     if (!response.ok) {
-      throw new Error(result.message || 'Failed to send email')
+      // Return detailed error from Resend
+      const errorMessage = result.message || result.error?.message || 'Failed to send email'
+      const errorDetails = result.error || {}
+      
+      return new Response(
+        JSON.stringify({ 
+          error: errorMessage,
+          details: errorDetails,
+          status: response.status,
+        }),
+        { 
+          status: response.status || 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          }
+        }
+      )
     }
 
     return new Response(
@@ -91,8 +136,12 @@ Deno.serve(async (req: Request) => {
       }
     )
   } catch (error: any) {
+    console.error('Edge Function Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        stack: error.stack,
+      }),
       {
         status: 500,
         headers: {
