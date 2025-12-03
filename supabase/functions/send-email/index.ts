@@ -2,6 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+// חשוב: ה-domain חייב להיות מאומת ב-Resend!
+// לך ל-Resend Dashboard → Domains כדי להוסיף domain
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@kupat-tov-vachesed.co.il'
 
 interface EmailRequest {
